@@ -85,11 +85,21 @@
   </header>
 
   <main>
-    <!-- Hero -->
-    <section class="hero" aria-labelledby="hero-title">
-      <div class="container">
-        <div class="hero__frame">
+    <!-- Hero — the viewport is pinned and the film is scrubbed by scroll -->
+    <section class="hero" id="hero" aria-labelledby="hero-title" data-hero>
+      <div class="hero__sticky">
+        <div class="hero__media">
           <img class="hero__img" src="assets/img/hero.jpg" alt="A low modern home opening onto a calm terrace at dusk" fetchpriority="high">
+          <video class="hero__video" preload="none" muted playsinline disablepictureinpicture aria-hidden="true" tabindex="-1"
+            data-src-desktop="assets/video/hero.mp4" data-src-mobile="assets/video/hero-mobile.mp4"></video>
+          <div class="hero__shade" aria-hidden="true"></div>
+          <div class="hero__loader" role="status">
+            <span class="hero__loader-ring" aria-hidden="true"></span>
+            <span>Preparing the view</span>
+          </div>
+        </div>
+
+        <div class="container hero__inner">
           <div class="hero__top">
             <p class="hero__eyebrow">Upgrade your life with smart home technology</p>
             <p class="hero__place">Karachi · London · Dubai</p>
@@ -408,5 +418,6 @@
   </footer>
 
   <script src="assets/js/main.js" defer></script>
+  <script src="assets/js/hero-video.js" defer></script>
 </body>
 </html>
