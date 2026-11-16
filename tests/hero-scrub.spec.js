@@ -210,6 +210,88 @@ test.describe("Hero film — reduced motion", () => {
   });
 });
 
+test.describe("Hero film — preload strategy", () => {
+  test.use({
+    viewport: { width: 390, height: 844 },
+    isMobile: true,
+    hasTouch: true,
+    reducedMotion: "no-preference",
+  });
+
+  test("keeps the film off the initial load and fetches the mobile cut once the hero settles", async ({ page }) => {
+    const filmRequests = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/assets/video/")) filmRequests.push(request.url());
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    const early = await page.evaluate(() => {
+      const hero = document.querySelector("[data-hero]");
+      const video = hero.querySelector(".hero__video");
+      return {
+        classes: hero.className,
+        hasSrc: video.hasAttribute("src"),
+        currentSrc: video.currentSrc,
+        loader: getComputedStyle(hero.querySelector(".hero__loader")).visibility,
+        imageVisible: getComputedStyle(hero.querySelector(".hero__img")).display !== "none",
+      };
+    });
+
+    expect(filmRequests).toHaveLength(0);
+    expect(early.hasSrc).toBe(false);
+    expect(early.currentSrc).toBe("");
+    expect(early.classes).not.toContain("is-loading");
+    expect(early.classes).not.toContain("is-ready");
+    expect(early.loader).toBe("hidden");
+    expect(early.imageVisible).toBe(true);
+
+    await expect(page.locator(HERO)).toHaveClass(/is-ready/, { timeout: 15000 });
+    expect(filmRequests.length).toBeGreaterThan(0);
+    expect(filmRequests.every((url) => url.includes("hero-mobile.mp4"))).toBe(true);
+    expect((await metrics(page)).currentSrc).toContain("hero-mobile.mp4");
+  });
+
+  test("starts loading as soon as the visitor scrolls", async ({ page }) => {
+    const filmRequests = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/assets/video/")) filmRequests.push(request.url());
+    });
+
+    await page.goto("/", { waitUntil: "domcontentloaded" });
+    expect(filmRequests).toHaveLength(0);
+
+    await page.evaluate(() => window.scrollTo(0, 160));
+    await page.waitForTimeout(250);
+    expect(filmRequests.length).toBeGreaterThan(0);
+    expect(filmRequests[0]).toContain("hero-mobile.mp4");
+  });
+
+  test("keeps the still hero for data-saver visitors", async ({ page }) => {
+    const filmRequests = [];
+    page.on("request", (request) => {
+      if (request.url().includes("/assets/video/")) filmRequests.push(request.url());
+    });
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "connection", {
+        configurable: true,
+        get: () => ({ saveData: true, effectiveType: "4g" }),
+      });
+    });
+
+    await page.goto("/", { waitUntil: "load" });
+    await page.waitForTimeout(2200);
+
+    expect(filmRequests).toHaveLength(0);
+    await expect(page.locator(HERO)).toHaveClass(/is-unavailable/);
+    await expect(page.locator(VIDEO)).toBeHidden();
+    await expect(page.locator(".hero__img")).toBeVisible();
+
+    const state = await metrics(page);
+    expect(state.sectionHeight).toBeLessThanOrEqual(state.viewportHeight + 2);
+    expect(state.overflow).toBeLessThanOrEqual(1);
+  });
+});
+
 test.describe("Hero film — viewport changes", () => {
   test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: "no-preference" });
 

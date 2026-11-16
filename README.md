@@ -8,7 +8,7 @@ The Base44 environment serves this checkout on port 3000 with a standard-library
 
 ## Hero film
 
-The hero is a pinned, 320vh scroll section whose progress is mapped to the film's timeline. The video is never played or looped: a single `requestAnimationFrame` loop eases `video.currentTime` towards the scroll target, and a `prefers-reduced-motion` visitor gets the still image instead. `assets/js/hero-video.js` owns the interaction.
+The hero is a pinned, 320vh scroll section whose progress is mapped to the film's timeline. The video is never played or looped: a single `requestAnimationFrame` loop eases `video.currentTime` towards the scroll target, and a `prefers-reduced-motion` visitor gets the still image instead. The film is kept off the critical path: no video bytes are requested while the page paints, the still image holds the hero until the visitor shows intent (pointer, touch, wheel or scroll) or the hero has been on screen briefly, and visitors with `saveData` keep the still image. `assets/js/hero-video.js` owns the interaction.
 
 `assets/video/hero.mp4` (1164×776) and `assets/video/hero-mobile.mp4` (900×600) are H.264 High, `yuv420p`, no audio, fast-start metadata, and encoded with a keyframe every 4 frames. The dense GOP is what keeps random seeks fast. Do not replace them with a long-GOP export or move the films to a server without byte-range support, or scrubbing will stutter.
 

@@ -15,9 +15,13 @@
    * consistent seek latency. Re-encoding with a long GOP will make scrubbing
    * stutter.
    *
-   * Phones get the lighter portrait cut. The cut is chosen from the current
-   * viewport and re-chosen when the breakpoint changes (rotation, resizing the
-   * preview), so a narrow screen never ends up scrubbing the desktop film.
+   * The film is the heaviest asset on the page, so it stays off the critical
+   * path: no video bytes are requested while the page paints. The still image
+   * holds the hero until the visitor shows intent (pointer, touch, wheel or
+   * scroll) or the hero has been on screen for a moment, whichever comes first.
+   * The cut matching the current viewport is requested, and re-chosen when the
+   * breakpoint changes (rotation, resizing the preview). Data-saver visitors
+   * keep the still image.
    */
 
   var hero = document.querySelector("[data-hero]");
@@ -32,12 +36,19 @@
   var mobileSource = video.getAttribute("data-src-mobile");
   if (!desktopSource || !mobileSource) return;
 
+  var connection = navigator.connection;
+  if (connection && connection.saveData) {
+    hero.classList.add("is-unavailable");
+    return;
+  }
+
   var mobileQuery = window.matchMedia("(max-width: 719px)");
 
   var SMOOTHING = 0.38;
   var MIN_SEEK_DELTA = 1 / 48;
   var SETTLED_DELTA = 0.002;
   var LOAD_TIMEOUT = 12000;
+  var PRELOAD_DELAY = 1500;
 
   var duration = 0;
   var targetTime = 0;
@@ -46,6 +57,8 @@
   var rafId = 0;
   var ready = false;
   var failed = false;
+  var enabled = false;
+  var preloadTimer = 0;
   var currentSource = "";
   var loadTimer = 0;
   var sectionTop = 0;
@@ -118,6 +131,7 @@
     measure();
     renderedTime = targetTime;
     lastSeek = -1;
+    hero.classList.remove("is-loading");
     hero.classList.add("is-ready");
     schedule();
   }
@@ -131,11 +145,19 @@
       clearTimeout(loadTimer);
       loadTimer = 0;
     }
-    hero.classList.remove("is-enhanced", "is-ready");
+    if (preloadTimer) {
+      clearTimeout(preloadTimer);
+      preloadTimer = 0;
+    }
+    hero.classList.remove("is-enhanced", "is-loading", "is-ready");
     hero.classList.add("is-unavailable");
     window.removeEventListener("scroll", updateTarget);
+    window.removeEventListener("scroll", enableFilm);
     window.removeEventListener("resize", onViewportChange);
     window.removeEventListener("orientationchange", onViewportChange);
+    window.removeEventListener("pointerdown", enableFilm);
+    window.removeEventListener("touchstart", enableFilm);
+    window.removeEventListener("wheel", enableFilm);
     if (window.visualViewport) {
       window.visualViewport.removeEventListener("resize", onViewportChange);
     }
@@ -164,8 +186,9 @@
     lastSeek = -1;
 
     hero.classList.remove("is-ready");
-    hero.classList.add("is-enhanced");
+    hero.classList.add("is-enhanced", "is-loading");
 
+    video.preload = "auto";
     video.src = next;
     video.load();
 
@@ -176,16 +199,39 @@
     }, LOAD_TIMEOUT);
   }
 
+  /* Nothing is fetched until the film is actually wanted. */
+  function enableFilm() {
+    if (enabled || failed) return;
+    enabled = true;
+    if (preloadTimer) {
+      clearTimeout(preloadTimer);
+      preloadTimer = 0;
+    }
+    beginLoad();
+  }
+
+  function heroIsVisible() {
+    var rect = hero.getBoundingClientRect();
+    return rect.bottom > 0 && rect.top < window.innerHeight;
+  }
+
+  function scheduleFilm() {
+    if (enabled || failed || preloadTimer) return;
+    preloadTimer = setTimeout(function () {
+      preloadTimer = 0;
+      if (heroIsVisible()) enableFilm();
+    }, PRELOAD_DELAY);
+  }
+
   function onViewportChange() {
     if (failed) return;
-    beginLoad();
+    if (enabled) beginLoad();
     measure();
   }
 
   video.autoplay = false;
   video.loop = false;
   video.muted = true;
-  video.preload = "auto";
   video.addEventListener("loadedmetadata", prime);
   video.addEventListener("loadeddata", reveal);
   video.addEventListener("canplay", reveal);
@@ -196,6 +242,10 @@
   });
 
   window.addEventListener("scroll", updateTarget, { passive: true });
+  window.addEventListener("scroll", enableFilm, { passive: true });
+  window.addEventListener("pointerdown", enableFilm, { passive: true });
+  window.addEventListener("touchstart", enableFilm, { passive: true });
+  window.addEventListener("wheel", enableFilm, { passive: true });
   window.addEventListener("resize", onViewportChange);
   window.addEventListener("orientationchange", onViewportChange);
   if (window.visualViewport) {
@@ -209,5 +259,5 @@
 
   hero.classList.add("is-enhanced");
   measure();
-  beginLoad();
+  scheduleFilm();
 })();

@@ -581,7 +581,7 @@ footer[id] {
   transition: opacity 0.4s var(--ease), transform 0.4s var(--ease), visibility 0.4s;
 }
 
-.hero.is-enhanced:not(.is-ready):not(.is-unavailable) .hero__loader {
+.hero.is-loading:not(.is-ready):not(.is-unavailable) .hero__loader {
   opacity: 1;
   visibility: visible;
   transform: translateX(-50%);
