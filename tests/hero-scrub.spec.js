@@ -210,6 +210,75 @@ test.describe("Hero film — reduced motion", () => {
   });
 });
 
+test.describe("Hero film — viewport changes", () => {
+  test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: "no-preference" });
+
+  test("switches to the mobile cut and keeps scrubbing when the viewport narrows", async ({ page }) => {
+    await openHero(page);
+    expect((await metrics(page)).currentSrc).toContain("hero.mp4");
+
+    await page.setViewportSize({ width: 390, height: 844 });
+    await page.waitForFunction(
+      () => document.querySelector(".hero__video").currentSrc.includes("hero-mobile.mp4"),
+      null,
+      { timeout: 15000 }
+    );
+    await expect(page.locator(HERO)).toHaveClass(/is-ready/, { timeout: 15000 });
+
+    const state = await metrics(page);
+    expect(state.currentSrc).toContain("hero-mobile.mp4");
+    expect(Math.abs(state.stickyHeight - state.viewportHeight)).toBeLessThanOrEqual(2);
+    expect(state.overflow).toBeLessThanOrEqual(1);
+
+    await scrollToProgress(page, 0.5);
+    await waitForTime(page, state.duration * 0.5);
+    const mid = await metrics(page);
+    expect(Math.abs(mid.currentTime - state.duration * 0.5)).toBeLessThan(0.09);
+    expect(mid.paused).toBe(true);
+    expect(mid.stickyTop).toBe(0);
+  });
+});
+
+test.describe("Hero film — short viewport", () => {
+  test.use({
+    viewport: { width: 844, height: 390 },
+    isMobile: true,
+    hasTouch: true,
+    reducedMotion: "no-preference",
+  });
+
+  test("fits the pinned hero and its call to action on a landscape phone", async ({ page }) => {
+    await openHero(page);
+    const state = await metrics(page);
+    expect(state.overflow).toBeLessThanOrEqual(1);
+    expect(Math.abs(state.stickyHeight - state.viewportHeight)).toBeLessThanOrEqual(2);
+
+    const boxes = await page.evaluate(() => {
+      const rect = (selector) => {
+        const box = document.querySelector(selector).getBoundingClientRect();
+        return { top: box.top, bottom: box.bottom, height: box.height };
+      };
+      return {
+        header: rect(".site-header"),
+        title: rect(".hero__title"),
+        footer: rect(".hero__footer"),
+        cta: rect(".hero__footer .btn"),
+      };
+    });
+    expect(boxes.title.top).toBeGreaterThanOrEqual(boxes.header.bottom);
+    expect(boxes.footer.bottom).toBeLessThanOrEqual(state.viewportHeight + 1);
+    expect(boxes.cta.bottom).toBeLessThanOrEqual(state.viewportHeight + 1);
+    expect(boxes.cta.height).toBeGreaterThanOrEqual(44);
+
+    await scrollToProgress(page, 0.5);
+    await waitForTime(page, state.duration * 0.5);
+    const mid = await metrics(page);
+    expect(Math.abs(mid.currentTime - state.duration * 0.5)).toBeLessThan(0.09);
+    expect(mid.paused).toBe(true);
+    expect(mid.stickyTop).toBe(0);
+  });
+});
+
 test.describe("Hero film — load failure", () => {
   test.use({ viewport: { width: 1440, height: 900 }, reducedMotion: "no-preference" });
 

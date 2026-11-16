@@ -14,7 +14,7 @@ The hero is a pinned, 320vh scroll section whose progress is mapped to the film'
 
 ## End-to-end tests
 
-Playwright covers the footer's desktop layout and mobile accordions, plus the hero film: no autoplay, forward and reverse scroll mapping, exact endpoints, pinned layout, mobile source selection and touch scrubbing, reduced-motion fallback, and video-load failure. The suite targets a server at `http://localhost:3000`. With the preview stack running:
+Playwright covers the footer's desktop layout and mobile accordions, plus the hero film: no autoplay, forward and reverse scroll mapping, exact endpoints, pinned layout, mobile source selection and touch scrubbing, source switching when the viewport changes, the landscape/short-viewport hero fit, reduced-motion fallback, and video-load failure. The suite targets a server at `http://localhost:3000`. With the preview stack running:
 
 ```sh
 docker run --rm --network host -e CI=1 \

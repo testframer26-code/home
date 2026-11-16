@@ -497,6 +497,10 @@ footer[id] {
   position: relative;
   height: 100vh;
   height: 100svh;
+  /* dvh keeps the pinned film flush with the visible screen while mobile
+     browser chrome collapses, instead of leaving a strip of bare section
+     below it. */
+  height: 100dvh;
   min-height: 560px;
   overflow: hidden;
 }
@@ -1420,6 +1424,34 @@ footer[id] {
 
   .stat-card__label {
     font-size: 0.59rem;
+  }
+}
+
+/* Phones in landscape and short viewports (including an embedded preview
+   panel): the pinned hero has to fit the visible screen, so the statistics
+   give way to the headline and its call to action instead of being clipped. */
+@media (max-height: 560px) {
+  .hero__sticky {
+    min-height: 0;
+  }
+
+  .hero__stats {
+    display: none;
+  }
+
+  .hero.is-enhanced .hero__inner {
+    padding-top: calc(var(--header-h) + 10px);
+    padding-bottom: 14px;
+  }
+
+  .hero__title {
+    margin-top: auto;
+    font-size: clamp(2.4rem, 13vh, 4.5rem);
+  }
+
+  .hero__footer {
+    margin-top: clamp(14px, 3vh, 24px);
+    padding-top: 12px;
   }
 }
 
